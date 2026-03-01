@@ -54,41 +54,41 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
-
+      
           $token = (az account get-access-token --resource https://graph.microsoft.com | ConvertFrom-Json).accessToken
           Connect-MgGraph -AccessToken (ConvertTo-SecureString $token -AsPlainText -Force)
-
+      
           Import-Module -Name "${{ env.REPO_DIR }}" -Force
           
           $runDate = "${{ steps.set_date.outputs.run_date }}"
           $basePath = "${{ github.workspace }}/staging/$runDate"
-
+      
           # Ensure base staging folder exists
           $stagingFolder = New-Item -Path $basePath -ItemType Directory -Force
-
+      
           if (Test-Path $stagingFolder) {
               Write-Host "Created staging folder at $basePath"
           } else {
               Write-Warning "Failed to create staging folder at $basePath"
               exit 1
           }
-
+      
           # Check if there are CSV files to process
           $csvFiles = Get-ChildItem -Path "${{ env.ASSIGNMENT_FOLDER }}" -Filter *.csv
-
+      
           if ($csvFiles.Count -eq 0) {
               Write-Error "No CSV files found in ASSIGNMENT_FOLDER."
               exit 1
           }
-
+      
           $processedPolicyIds = @{}
           $processedCount = 0
-
+      
           # Loop through CSV files
           foreach ($file in $csvFiles) {
               Write-Host "Processing CSV file: $($file.FullName)"
               $csvData = Import-Csv -Path $file.FullName
-
+      
               # Process each row in the CSV
               foreach ($row in $csvData) {
                   $policyId = $row.PolicyId
@@ -96,65 +96,67 @@ jobs:
                       Write-Warning "Skipping row with missing PolicyId."
                       continue
                   }
-
+      
                   if ($processedPolicyIds.Contains($policyId)) {
                       Write-Host "Skipping already processed PolicyId: $policyId"
                       continue
                   }
-
+      
                   $processedPolicyIds[$policyId] = $true
                   $processedCount++
-
+      
                   $policyFolder = "$basePath/$policyId"
                   # Create a directory for the policy
                   New-Item -Path $policyFolder -ItemType Directory -Force | Out-Null
-
+      
                   if (Test-Path -path $policyFolder) {
                       Write-Host "Created folder for PolicyId $policyId at $policyFolder"
                   } else {
                       Write-Warning "Failed to create folder for PolicyId $policyId at $policyFolder"
                       continue
                   }
-
+      
                   Write-Host "Processing PolicyId: $policyId"
-
+      
                   # 1. Export existing assignments
                   Write-Host "Processing export of existing policies for $policyId"
-                  Export-IntuneDeviceConfigurationPolicyAssignments -policyId $policyId -outputFolder $policyFolder
-
+                  $exportResult = Export-IntuneDeviceConfigurationPolicyAssignments -policyId $policyId -outputFolder $policyFolder
+                  Write-Host "Existing assignments file exported: $($exportResult.FilePath)"
+      
                   # 2. Create new JSON
                   Write-Host "Creating new JSON file from CSV for PolicyId: $policyId"
-                  New-IntuneAssignmentJson -InputFilePath $file.FullName -OutputFilePath "$policyFolder/new-assignments.json"
-
+                  $newResult = New-IntuneAssignmentJson -InputFilePath $file.FullName -OutputFilePath "$policyFolder/new-assignments.json"
+                  Write-Host "New assignments file exported: $($newResult.FilePath)"
+      
                   # 3. Merge
                   Write-Host "Merging JSON files for PolicyId: $policyId"
-                  $existingFile = Get-ChildItem $policyFolder -Filter "*_Assignments.json" | Select-Object -First 1
-                  Write-Host "Existing assignment file: $existingFile"
-                  $newFile = "$policyFolder/new-assignments.json"
-                  Write-Host "New assignment file: $newFile"
-
-                  $originalPath = if ($existingFile) { $existingFile.FullName } else { $null }
-                  $additionalPath = if (Test-Path $newFile) { $newFile } else { $null }
-
+                  Write-Host "Existing assignment file: $($exportResult.FilePath)"
+                  Write-Host "New assignment file: $($newResult.FilePath)"
+      
                   # Only run merge if at least one file exists
-                  if ($originalPath -and $additionalPath) {
+                  if ($exportResult -and $newResult) {
                       Write-Host "Merging both files for $policyId"
-                      Merge-IntuneAssignmentJson -OriginalAssignmentFile $originalPath -AdditionalAssignmentFile $additionalPath -OutputFile "$policyFolder/merged-assignments.json"
-                  } elseif ($additionalPath) {
+                      Merge-IntuneAssignmentJson -OriginalAssignmentFile $($exportResult.FilePath) -AdditionalAssignmentFile $($newResult.FilePath) -OutputFile "$policyFolder/merged-assignments.json"
+                  } elseif ($newResult) {
                       Write-Warning "No existing assignment file found for $policyId. Renaming new file to 'merged-assignments.json'."
-                      Rename-Item -Path $additionalPath -NewName "merged-assignments.json"
+                      # Only rename if the new file exists
+                      if (Test-Path $newResult.FilePath) {
+                          Rename-Item -Path $($newResult.FilePath) -NewName "$policyFolder/merged-assignments.json"
+                      } else {
+                          Write-Warning "New assignment file does not exist for $policyId."
+                      }
                   } else {
                       Write-Warning "No assignment files found for $policyId to merge."
                   }
               }
           }
-
+      
           # Final check if anything was processed
           if ($processedCount -eq 0) {
               Write-Error "No PolicyIds were processed. Nothing generated."
               exit 1
           }
-
+      
           Write-Host "Processed $processedCount PolicyIds successfully."
 
       # ------------------------------------------------------------
