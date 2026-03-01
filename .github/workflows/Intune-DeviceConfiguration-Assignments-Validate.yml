@@ -154,16 +154,9 @@ jobs:
           }
 
           Write-Host "Processed $processedCount PolicyIds successfully."
-      # ------------------------------------------------------------
-      # Debug Folder Structure (Temporary but Useful)
-      # ------------------------------------------------------------
-      - name: Debug staging folder
-        run: |
-          echo "Listing staging folder:"
-          ls -R staging || echo "No staging folder found"
 
       # ------------------------------------------------------------
-      # Upload Single Artifact
+      # Upload Artifacts
       # ------------------------------------------------------------
       - name: Upload assignments artifact
         uses: actions/upload-artifact@v4
