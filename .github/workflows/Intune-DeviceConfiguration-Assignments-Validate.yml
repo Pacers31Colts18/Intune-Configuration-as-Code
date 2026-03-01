@@ -115,23 +115,27 @@ jobs:
                       Write-Warning "Failed to create folder for PolicyId $policyId at $policyFolder"
                       continue
                   }
-      
+                  Write-Host "---------------------------------------------------------------------"
                   Write-Host "Processing PolicyId: $policyId"
       
                   # 1. Export existing assignments
                   Write-Host "Processing export of existing policies for $policyId"
                   $exportResult = Export-IntuneDeviceConfigurationPolicyAssignments -policyId $policyId -outputFolder $policyFolder
                   Write-Host "Existing assignments file exported: $($exportResult.FilePath)"
+                  Write-Host "---------------------------------------------------------------------"
       
                   # 2. Create new JSON
                   Write-Host "Creating new JSON file from CSV for PolicyId: $policyId"
                   $newResult = New-IntuneAssignmentJson -InputFilePath $file.FullName -OutputFilePath "$policyFolder/new-assignments.json"
                   Write-Host "New assignments file exported: $($newResult.FilePath)"
+                  Write-Host "---------------------------------------------------------------------"
       
                   # 3. Merge
                   Write-Host "Merging JSON files for PolicyId: $policyId"
                   Write-Host "Existing assignment file: $($exportResult.FilePath)"
                   Write-Host "New assignment file: $($newResult.FilePath)"
+                  Write-Host "---------------------------------------------------------------------"
+
       
                   # Only run merge if at least one file exists
                   if ($exportResult -and $newResult) {
@@ -158,6 +162,8 @@ jobs:
           }
       
           Write-Host "Processed $processedCount PolicyIds successfully."
+          Write-Host "---------------------------------------------------------------------"
+
 
       # ------------------------------------------------------------
       # Upload Artifacts
