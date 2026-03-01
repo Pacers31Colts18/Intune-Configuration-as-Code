@@ -29,6 +29,11 @@ Merges two Intune Assignment JSON files into a single output file.
     # Initialize mergedAssignments
     $mergedAssignments = @()
 
+    # Log the paths of the files being processed
+    Write-Host "Merging Assignment Files..."
+    Write-Host "Original Assignment File: $OriginalAssignmentFile"
+    Write-Host "Additional Assignment File: $AdditionalAssignmentFile"
+
     # Load original file if it exists, otherwise start empty
     if (Test-Path $OriginalAssignmentFile) {
         Write-Host "Loading original assignment file..."
@@ -47,6 +52,7 @@ Merges two Intune Assignment JSON files into a single output file.
 
     # Merge additional file if it exists
     if ($AdditionalAssignmentFile -and (Test-Path $AdditionalAssignmentFile)) {
+        Write-Host "Loading additional assignment file..."
         $data2 = Get-Content $AdditionalAssignmentFile -Raw | ConvertFrom-Json
         if ($data2.value) {
             $mergedAssignments += $data2.value
