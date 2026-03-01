@@ -5,7 +5,7 @@
     "id": "34ae145a-5670-4203-b814-2456acc41f48_29b45ab4-dcd6-438b-b750-2b5c21554f56",
     "sourceId": "34ae145a-5670-4203-b814-2456acc41f48",
     "target": {
-      "@odata.type": "#microsoft.graph.exclusionGroupAssignmentTarget",
+      "@odata.type": "#microsoft.graph.groupAssignmentTarget",
       "groupId": "29b45ab4-dcd6-438b-b750-2b5c21554f56",
       "deviceAndAppManagementAssignmentFilterId": null,
       "deviceAndAppManagementAssignmentFilterType": "none"
