@@ -129,7 +129,9 @@ jobs:
                   # 3. Merge
                   Write-Host "Merging JSON files for PolicyId: $policyId"
                   $existingFile = Get-ChildItem $policyFolder -Filter "*_Assignments.json" | Select-Object -First 1
+                  Write-Host "Existing assignment file: $existingFile"
                   $newFile = "$policyFolder/new-assignments.json"
+                  Write-Host "New assignment file: $newFile"
 
                   $originalPath = if ($existingFile) { $existingFile.FullName } else { $null }
                   $additionalPath = if (Test-Path $newFile) { $newFile } else { $null }
