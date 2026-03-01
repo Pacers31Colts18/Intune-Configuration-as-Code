@@ -1,4 +1,4 @@
-name: Intune-DeviceConfiguration-Assignment-Apply2
+name: Intune-DeviceConfiguration-Assignment-Apply
 
 on:
   push:
