@@ -1,76 +1,60 @@
 function Set-IntuneDeviceConfigurationPolicyAssignment {
-<#
-.SYNOPSIS
-Configures Intune Device Configuration Policy assignments from a JSON file.
-.DESCRIPTION
-This function applies assignments to an Intune Device Configuration Policy using a JSON file.
-.PARAMETER InputFilePath
-Mandatory. The path to the input JSON file containing assignments.
-.NOTES
-Requires:
-- Microsoft.Graph PowerShell SDK (e.g., Invoke-MgGraphRequest, Get-MgContext)
-- Microsoft.Graph.DeviceManagement permissions to read and write configuration policies.
-.EXAMPLE
-Set-IntuneDeviceConfigurationPolicyAssignment -InputFilePath "C:\temp\IntuneAssignments.json"
-Applies assignments from the specified JSON file to an Intune Device Configuration Policy.
-.LINK
- https://learn.microsoft.com/en-us/powershell/microsoftgraph/overview
-    #> 
+    <#
+    .SYNOPSIS
+        Applies Intune Device Configuration Policy assignments from a merged JSON file.
+    .DESCRIPTION
+        Reads a merged assignment JSON file and POSTs it to the Graph API assign endpoint
+        for the policy identified by the sourceId in the file. Only a single PolicyId per
+        file is supported.
+    .PARAMETER InputFilePath
+        Mandatory. Path to the merged assignment JSON file.
+    .EXAMPLE
+        Set-IntuneDeviceConfigurationPolicyAssignment -InputFilePath "C:\temp\merged-assignments.json"
+    .LINK
+        https://learn.microsoft.com/en-us/powershell/microsoftgraph/overview
+    #>
 
     [CmdletBinding()]
-    Param(
-        [Parameter(Mandatory = $true)]
+    param (
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
         [string]$InputFilePath
     )
 
-    # Check Graph connection
-    if ($null -eq (Get-MgContext)) {
-        Write-Error "Authentication needed. Please connect to Microsoft Graph."
-        return
+    if (-not (Get-MgContext)) {
+        throw "Not connected to Microsoft Graph. Run Connect-MgGraph first."
     }
-
-    $graphApiVersion = "beta"
 
     if (-not (Test-Path $InputFilePath)) {
-        Write-Error "File not found: $InputFilePath"
-        return
+        throw "File not found: '$InputFilePath'."
     }
+
+    $JsonContent = Get-Content $InputFilePath -Raw | ConvertFrom-Json
+
+    if (-not $JsonContent.value) {
+        throw "JSON file '$InputFilePath' does not contain a 'value' array."
+    }
+
+    $PolicyIds = @($JsonContent.value | Select-Object -ExpandProperty sourceId -Unique)
+
+    if ($PolicyIds.Count -eq 0) {
+        throw "No 'sourceId' found in assignments in '$InputFilePath'."
+    }
+
+    if ($PolicyIds.Count -gt 1) {
+        throw "Multiple sourceIds found in '$InputFilePath'. Only one PolicyId per file is supported."
+    }
+
+    $PolicyId = $PolicyIds[0]
+
+    $Body = @{ assignments = $JsonContent.value } | ConvertTo-Json -Depth 10
 
     try {
-        # Load JSON
-        $jsonContent = Get-Content $InputFilePath -Raw | ConvertFrom-Json
-
-        if (-not $jsonContent.value) {
-            Write-Error "JSON file does not contain a value."
-            break
-        }
-
-        # Get unique sourceId
-        $policyIds = @($jsonContent.value | Select-Object -ExpandProperty sourceId -Unique)
-
-        if ($policyIds.Count -eq 0) {
-            Write-Error "No sourceId found in assignments."
-            break
-        }
-
-        if ($policyIds.Count -gt 1) {
-            Write-Error "Multiple sourceIds found in JSON. Only one PolicyId per file is supported."
-            break
-        }
-
-        $PolicyId = $policyIds[0]
-
-        # Build body
-        $body = @{
-            assignments = $jsonContent.value
-        } | ConvertTo-Json -Depth 10
-
-        $uri = "https://graph.microsoft.com/$graphApiVersion/deviceManagement/configurationPolicies/$PolicyId/assign"
-
-        Invoke-MgGraphRequest -Method POST -Uri $uri -Body $body -ContentType "application/json"
-        Write-Host "Successfully applied assignments for PolicyId $PolicyId"
+        Invoke-MgGraphRequest -Method POST -Uri "https://graph.microsoft.com/beta/deviceManagement/configurationPolicies/$PolicyId/assign" -Body $Body -ContentType "application/json" -ErrorAction Stop
     }
     catch {
-        Write-Error "Error applying assignments: $_"
+        throw "Failed to apply assignments for PolicyId '$PolicyId': $_"
     }
+
+    Write-Host "Assignments applied successfully for PolicyId '$PolicyId'."
 }

@@ -1,0 +1,266 @@
+name: Intune-DeviceConfiguration-Assignments
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'staging/deviceconfiguration/assignments/**'
+  push:
+    branches:
+      - main
+    paths:
+      - 'staging/deviceconfiguration/assignments/**'
+
+permissions:
+  id-token: write
+  contents: write
+  pull-requests: write
+  statuses: write
+
+env:
+  MODULE_PATH:       ${{ github.workspace }}/Intune-WaveRollout
+  ASSIGNMENT_FOLDER: ${{ github.workspace }}/staging/deviceconfiguration/assignments
+
+jobs:
+
+  # ──────────────────────────────────────────────────────────────
+  # PR: Generate staged JSON files and commit them to the branch
+  # ──────────────────────────────────────────────────────────────
+  validate_assignments:
+    if: github.event_name == 'pull_request' && github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    environment: GraphApi
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.head_ref }}
+
+      - name: Set date variable
+        id: set_date
+        run: echo "run_date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          allow-no-subscriptions: true
+
+      - name: Install Graph Modules
+        shell: pwsh
+        run: |
+          Install-Module Microsoft.Graph.Authentication        -Force -AllowClobber -Scope CurrentUser
+          Install-Module Microsoft.Graph.Beta.DeviceManagement -Force -AllowClobber -Scope CurrentUser
+
+      - name: Process and Stage Assignments
+        id: process
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+
+          $token = (az account get-access-token --resource https://graph.microsoft.com | ConvertFrom-Json).accessToken
+          Connect-MgGraph -AccessToken (ConvertTo-SecureString $token -AsPlainText -Force)
+
+          Import-Module -Name "${{ env.MODULE_PATH }}" -Force
+
+          $runDate    = "${{ steps.set_date.outputs.run_date }}"
+          $basePath   = "${{ github.workspace }}/staging/$runDate"
+          $stagingDir = New-Item -Path $basePath -ItemType Directory -Force
+
+          if (-not (Test-Path $stagingDir)) {
+              throw "Failed to create staging folder at '$basePath'."
+          }
+          Write-Host "Staging folder: $basePath"
+
+          $CsvFiles = Get-ChildItem -Path "${{ env.ASSIGNMENT_FOLDER }}" -Filter *.csv -File
+
+          if ($CsvFiles.Count -eq 0) {
+              throw "No CSV files found in ASSIGNMENT_FOLDER '${{ env.ASSIGNMENT_FOLDER }}'."
+          }
+
+          $ProcessedPolicyIds = @{}
+          $ProcessedCount     = 0
+          $AllReportMarkdown  = @()
+
+          foreach ($File in $CsvFiles) {
+
+              Write-Host "Processing CSV: $($File.FullName)"
+              $CsvData = Import-Csv -Path $File.FullName
+
+              foreach ($Row in $CsvData) {
+
+                  $PolicyId = $Row.PolicyId
+                  if (-not $PolicyId) {
+                      Write-Warning "Skipping row with missing PolicyId in '$($File.Name)'."
+                      continue
+                  }
+
+                  if ($ProcessedPolicyIds.ContainsKey($PolicyId)) {
+                      Write-Host "PolicyId '$PolicyId' already processed. Skipping duplicate row."
+                      continue
+                  }
+
+                  $ProcessedPolicyIds[$PolicyId] = $true
+                  $ProcessedCount++
+
+                  $PolicyFolder = "$basePath/$PolicyId"
+                  New-Item -Path $PolicyFolder -ItemType Directory -Force | Out-Null
+
+                  if (-not (Test-Path $PolicyFolder)) {
+                      Write-Warning "Failed to create folder for PolicyId '$PolicyId'. Skipping."
+                      continue
+                  }
+
+                  Write-Host "------------------------------------------------------------"
+                  Write-Host "PolicyId: $PolicyId"
+
+                  # 1. Export existing assignments from tenant
+                  Write-Host "Exporting existing assignments..."
+                  $ExportResult = Export-IntuneDeviceConfigurationPolicyAssignments -PolicyId $PolicyId -OutputFolder $PolicyFolder
+                  Write-Host "Existing assignments exported: $($ExportResult.FilePath)"
+
+                  # 2. Build new assignments JSON from CSV
+                  Write-Host "Building new assignment JSON from CSV..."
+                  $NewResult = New-IntuneAssignmentJson -InputFilePath $File.FullName -OutputFilePath "$PolicyFolder/new-assignments.json"
+                  Write-Host "New assignments file: $($NewResult.FilePath)"
+
+                  # 3. Merge
+                  Write-Host "Merging assignment files..."
+                  $MergeParams = @{
+                      AdditionalAssignmentFile = $NewResult.FilePath
+                      OutputFile               = "$PolicyFolder/merged-assignments.json"
+                  }
+                  if ($ExportResult) {
+                      $MergeParams.OriginalAssignmentFile = $ExportResult.FilePath
+                  }
+                  $MergeResult = Merge-IntuneAssignmentJson @MergeParams
+                  Write-Host "Merged file written: $($MergeResult.FilePath)"
+
+                  # 4. Generate markdown report
+                  Write-Host "Generating assignment report..."
+                  $ReportParams = @{
+                      PolicyId             = $PolicyId
+                      PolicyName           = (Get-Content $ExportResult.FilePath -Raw | ConvertFrom-Json | Select-Object -ExpandProperty '@odata.context' | ForEach-Object { $_ -replace ".*configurationPolicies\('(.+?)'\).*", '$1' })
+                      NewAssignmentFile    = $NewResult.FilePath
+                      MergedAssignmentFile = $MergeResult.FilePath
+                      OutputFolder         = $PolicyFolder
+                  }
+                  # Resolve policy display name from tenant
+                  try {
+                      $PolicyMeta = Invoke-MgGraphRequest -Method GET -Uri "https://graph.microsoft.com/beta/deviceManagement/configurationPolicies/$PolicyId" -ErrorAction Stop
+                      $ReportParams.PolicyName = $PolicyMeta.name
+                  } catch {
+                      $ReportParams.PolicyName = $PolicyId
+                  }
+                  if ($ExportResult) {
+                      $ReportParams.ExistingAssignmentFile = $ExportResult.FilePath
+                  }
+                  $ReportResult = New-IntuneAssignmentReport @ReportParams
+                  Write-Host "Report written: $($ReportResult.FilePath)"
+
+                  $AllReportMarkdown += $ReportResult.MarkdownContent
+              }
+          }
+
+          if ($ProcessedCount -eq 0) {
+              throw "No PolicyIds were processed. Nothing generated."
+          }
+
+          Write-Host "------------------------------------------------------------"
+          Write-Host "Processed $ProcessedCount PolicyId(s) successfully."
+
+          # Write combined comment body to a file for the next step
+          $AllReportMarkdown -join "`n`n---`n`n" | Set-Content -Path "${{ github.workspace }}/pr-comment.md" -Encoding UTF8 -Force
+
+      - name: Upload assignments artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: assignments-${{ steps.set_date.outputs.run_date }}
+          path: staging/${{ steps.set_date.outputs.run_date }}
+          if-no-files-found: error
+
+      - name: Post assignment report as PR comment
+        run: gh pr comment ${{ github.event.pull_request.number }} --body-file "${{ github.workspace }}/pr-comment.md"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Commit staged JSON and report files to branch
+        run: |
+          git config --global user.name  "github-actions[bot]"
+          git config --global user.email "github-actions@github.com"
+          git add staging/${{ steps.set_date.outputs.run_date }}
+          git commit -m "Auto-generated Intune assignment JSON and reports - ${{ steps.set_date.outputs.run_date }}" || echo "No changes to commit"
+          git push origin HEAD:${{ github.head_ref }}
+
+  # ──────────────────────────────────────────────────────────────
+  # Post-merge: Apply merged assignment files to Intune
+  # ──────────────────────────────────────────────────────────────
+  apply_assignments:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment: GraphApi
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed merged assignment files
+        id: changed
+        run: |
+          git diff --name-only ${{ github.event.before }} ${{ github.sha }} > changed_files.txt
+          echo "Changed files:"
+          cat changed_files.txt
+
+          grep "merged-assignments.json" changed_files.txt > merged_files.txt || true
+
+          if [ ! -s merged_files.txt ]; then
+            echo "No merged-assignments.json files changed. Nothing to apply."
+            echo "files=" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          echo "files<<EOF" >> $GITHUB_OUTPUT
+          cat merged_files.txt >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Login to Azure
+        if: steps.changed.outputs.files != ''
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          allow-no-subscriptions: true
+
+      - name: Install Graph Modules
+        if: steps.changed.outputs.files != ''
+        shell: pwsh
+        run: |
+          Install-Module Microsoft.Graph.Authentication        -Force -AllowClobber -Scope CurrentUser
+          Install-Module Microsoft.Graph.Beta.DeviceManagement -Force -AllowClobber -Scope CurrentUser
+
+      - name: Apply Assignments
+        if: steps.changed.outputs.files != ''
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+
+          $token = (az account get-access-token --resource https://graph.microsoft.com | ConvertFrom-Json).accessToken
+          Connect-MgGraph -AccessToken (ConvertTo-SecureString $token -AsPlainText -Force)
+
+          Import-Module -Name "${{ env.MODULE_PATH }}" -Force
+
+          $ChangedFiles = "${{ steps.changed.outputs.files }}" -split "`n" | Where-Object { $_.Trim() -ne "" }
+
+          foreach ($File in $ChangedFiles) {
+              $FullPath = Join-Path "${{ github.workspace }}" $File.Trim()
+              Write-Host "Applying assignments from: $FullPath"
+              Set-IntuneDeviceConfigurationPolicyAssignment -InputFilePath $FullPath
+              Write-Host "Applied successfully."
+          }
+
+          Write-Host "All changed assignments applied."

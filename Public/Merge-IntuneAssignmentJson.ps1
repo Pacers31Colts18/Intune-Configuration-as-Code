@@ -1,89 +1,89 @@
 function Merge-IntuneAssignmentJson {
-<#
-.SYNOPSIS
-Merges Intune Assignment JSON files.
-.DESCRIPTION
-This function merges two Intune Assignment JSON files into a single output file.
-.PARAMETER OriginalAssignmentFile
-The path to the original assignment JSON file.
-.PARAMETER AdditionalAssignmentFile
-The path to the additional assignment JSON file.
-.PARAMETER OutputFile
-The path to the output merged assignment JSON file.
-.EXAMPLE
-Merge-IntuneAssignmentJson -OriginalAssignmentFile "C:\temp\Original.json" -AdditionalAssignmentFile "C:\temp\Additional.json" -OutputFile "C:\temp\Merged.json"
-Merges two Intune Assignment JSON files into a single output file.
-#> 
+    <#
+    .SYNOPSIS
+        Merges two Intune assignment JSON files into one, deduplicating by assignment id.
+    .DESCRIPTION
+        Loads assignments from an original file and an additional file, merges them,
+        removes duplicates by id, and writes the result to an output file.
+        Either source file can be absent — the function will warn and continue with
+        whatever is available.
+    .PARAMETER OriginalAssignmentFile
+        Path to the existing/exported assignment JSON file.
+    .PARAMETER AdditionalAssignmentFile
+        Path to the new assignment JSON file to merge in.
+    .PARAMETER OutputFile
+        Mandatory. Path to write the merged output JSON file.
+    .EXAMPLE
+        Merge-IntuneAssignmentJson -OriginalAssignmentFile "C:\existing.json" -AdditionalAssignmentFile "C:\new.json" -OutputFile "C:\merged.json"
+    #>
+
     [CmdletBinding()]
-    Param(
-        [Parameter(Mandatory = $false)]
+    param (
+        [Parameter()]
         [string]$OriginalAssignmentFile,
 
-        [Parameter(Mandatory = $false)]
+        [Parameter()]
         [string]$AdditionalAssignmentFile,
 
-        [Parameter(Mandatory = $true)]
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
         [string]$OutputFile
     )
 
-    # Initialize mergedAssignments
-    $mergedAssignments = @()
+    $MergedAssignments = @()
+    $ODataContext      = ""
 
-    # Log the paths of the files being processed
-    Write-Host "Merging Assignment Files..."
-    Write-Host "Original Assignment File: $OriginalAssignmentFile"
-    Write-Host "Additional Assignment File: $AdditionalAssignmentFile"
-
-    # Load original file if it exists, otherwise start empty
-    if (Test-Path $OriginalAssignmentFile) {
-        Write-Host "Loading original assignment file..."
-        $data1 = Get-Content $OriginalAssignmentFile -Raw | ConvertFrom-Json
-        if ($data1.value) {
-            $mergedAssignments += $data1.value
-            $odataContext = $data1.'@odata.context'
+    # Load original
+    if ($OriginalAssignmentFile -and (Test-Path $OriginalAssignmentFile)) {
+        Write-Host "Loading original assignment file: '$OriginalAssignmentFile'"
+        $Data = Get-Content $OriginalAssignmentFile -Raw | ConvertFrom-Json
+        if ($Data.value) {
+            $MergedAssignments += $Data.value
+            $ODataContext = $Data.'@odata.context'
         } else {
-            Write-Warning "Original assignment file has no 'value'. Starting empty."
-            $odataContext = ""
+            Write-Warning "Original assignment file has no 'value' array. Skipping."
         }
     } else {
-        Write-Warning "Original assignment file not found. Creating empty assignment JSON."
-        $odataContext = ""
+        Write-Warning "Original assignment file not found or not specified. Starting with empty set."
     }
 
-    # Merge additional file if it exists
+    # Load additional
     if ($AdditionalAssignmentFile -and (Test-Path $AdditionalAssignmentFile)) {
-        Write-Host "Loading additional assignment file..."
-        $data2 = Get-Content $AdditionalAssignmentFile -Raw | ConvertFrom-Json
-        if ($data2.value) {
-            $mergedAssignments += $data2.value
+        Write-Host "Loading additional assignment file: '$AdditionalAssignmentFile'"
+        $Data = Get-Content $AdditionalAssignmentFile -Raw | ConvertFrom-Json
+        if ($Data.value) {
+            $MergedAssignments += $Data.value
         } else {
-            Write-Warning "Additional file has no 'value'. Ignoring."
+            Write-Warning "Additional assignment file has no 'value' array. Skipping."
         }
-    } elseif ($AdditionalAssignmentFile) {
-        Write-Warning "Additional file not found. Ignoring."
+    } else {
+        Write-Warning "Additional assignment file not found or not specified. Skipping."
     }
 
-    # Remove duplicates by id
-    if ($mergedAssignments.Count -gt 0) {
-        $mergedAssignments = $mergedAssignments | Sort-Object id -Unique
+    if ($MergedAssignments.Count -eq 0) {
+        throw "No assignments found in either input file. Nothing to write."
     }
 
-    # Build final JSON object
-    $finalObject = [PSCustomObject]@{
-        "@odata.context" = $odataContext
-        value            = $mergedAssignments
+    # Deduplicate by id
+    $MergedAssignments = $MergedAssignments | Sort-Object id -Unique
+
+    $FinalObject = [PSCustomObject]@{
+        "@odata.context" = $ODataContext
+        value            = $MergedAssignments
     }
 
-    # Ensure output directory exists
-    $directory = Split-Path $OutputFile -Parent
-    if ($directory -and -not (Test-Path $directory)) {
-        New-Item -ItemType Directory -Path $directory -Force | Out-Null
+    $Directory = Split-Path $OutputFile -Parent
+    if ($Directory -and -not (Test-Path $Directory)) {
+        New-Item -ItemType Directory -Path $Directory -Force | Out-Null
     }
 
-    # Save JSON
-    $jsonOutput = $finalObject | ConvertTo-Json -Depth 10
-    $jsonOutput | Set-Content -Path $OutputFile -Encoding UTF8 -Force
+    $JsonOutput = $FinalObject | ConvertTo-Json -Depth 10
+    $JsonOutput | Set-Content -Path $OutputFile -Encoding UTF8 -Force
 
-    Write-Host "Merged assignment JSON written to $OutputFile"
-    return $jsonOutput
+    Write-Host "Merged assignment JSON written to '$OutputFile'."
+
+    return [PSCustomObject]@{
+        FilePath = $OutputFile
+        JsonData = $JsonOutput
+    }
 }

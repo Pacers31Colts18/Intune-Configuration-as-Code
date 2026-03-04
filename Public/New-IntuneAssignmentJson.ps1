@@ -1,136 +1,132 @@
 function New-IntuneAssignmentJson {
-<#
-.SYNOPSIS
-Creates Microsoft Intune Assignment JSON files from CSV input.
-.DESCRIPTION
-This function creates Intune Assignment JSON files from CSV input containing PolicyId, GroupId, and AssignmentType columns.
-.PARAMETER InputFilePath
-Mandatory. The path to the input CSV file.
-.PARAMETER OutputFilePath
-Mandatory. The path to the output JSON file.
-.NOTES
-Requires:
-- Microsoft.Graph PowerShell SDK (e.g., Invoke-MgGraphRequest, Get-MgContext)
-- Microsoft.Graph.DeviceManagement permissions to read and write configuration policies.
-.EXAMPLE
-New-IntuneAssignmentJson -InputFilePath "C:\temp\IntuneAssignments.csv" -OutputFilePath "C:\temp\IntuneAssignment.json"
-Creates an Intune Assignment JSON file from the specified CSV input.
-.LINK
- https://learn.microsoft.com/en-us/powershell/microsoftgraph/overview
-    #> 
+    <#
+    .SYNOPSIS
+        Creates an Intune Device Configuration Policy assignment JSON file from CSV input.
+    .DESCRIPTION
+        Reads a CSV file containing PolicyId, GroupId, AssignmentType, and optional FilterId/FilterType
+        columns and produces a JSON file in the format expected by the Graph API assignments endpoint.
+        Returns a result object with FilePath and JsonData properties, consistent with
+        Export-IntuneDeviceConfigurationPolicyAssignments.
+    .PARAMETER InputFilePath
+        Mandatory. Path to the input CSV file.
+    .PARAMETER OutputFilePath
+        Mandatory. Path where the output JSON file will be written.
+    .NOTES
+        CSV must contain exactly one unique PolicyId.
+        AssignmentType must be 'include' or 'exclude'.
+        Exclusions cannot target All Devices or All Users.
+    .EXAMPLE
+        New-IntuneAssignmentJson -InputFilePath "C:\temp\assignments.csv" -OutputFilePath "C:\temp\new-assignments.json"
+    .LINK
+        https://learn.microsoft.com/en-us/powershell/microsoftgraph/overview
+    #>
 
     [CmdletBinding()]
-    Param(
-        [Parameter(Mandatory = $true)]
+    param (
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
         [string]$InputFilePath,
-        [Parameter(Mandatory = $true)]
+
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
         [string]$OutputFilePath
     )
 
-    # Validate CSV Exists
-    if (-not (Test-Path $InputFilePath)) { 
-        Write-Error "CSV file not found at $InputFilePath" 
+    if (-not (Test-Path $InputFilePath)) {
+        throw "CSV file not found at '$InputFilePath'."
     }
 
-    $rows = Import-Csv -Path $InputFilePath
+    $Rows = Import-Csv -Path $InputFilePath
 
-    if (-not $rows) { 
-        Write-Error "CSV file contains no rows."
+    if (-not $Rows) {
+        throw "CSV file '$InputFilePath' contains no rows."
     }
 
-    # Validate Required Columns
-    if (-not $rows[0].PolicyId) {
-        Write-Error "CSV must contain a PolicyId column."
+    # Validate required columns exist
+    $RequiredColumns = @("PolicyId", "GroupId", "AssignmentType")
+    foreach ($Col in $RequiredColumns) {
+        if ($null -eq $Rows[0].PSObject.Properties[$Col]) {
+            throw "CSV must contain a '$Col' column."
+        }
     }
 
-    if (-not $rows[0].GroupId) {
-        Write-Error "CSV must contain a GroupId column."
+    # Validate single PolicyId
+    $PolicyIds = @($Rows | Select-Object -ExpandProperty PolicyId -Unique)
+    if ($PolicyIds.Count -ne 1) {
+        throw "CSV must contain exactly one unique PolicyId. Found: $($PolicyIds -join ', ')"
     }
 
-    if (-not $rows[0].AssignmentType) {
-        Write-Error "CSV must contain an AssignmentType column (include/exclude)."
-    }
+    $PolicyId   = [string]$PolicyIds[0]
+    $Assignments = @()
 
-    # Validate Single PolicyId
-    $policyIds = @($rows | Select-Object -ExpandProperty PolicyId -Unique)
+    foreach ($Row in $Rows) {
 
-    if ($policyIds.Count -ne 1) {
-        Write-Error "CSV must contain only one PolicyId."
-    }
+        $GroupId        = $Row.GroupId.Trim()
+        $AssignmentType = $Row.AssignmentType.Trim().ToLower()
 
-    $PolicyId = [string]$policyIds[0]
-
-    $assignments = @()
-
-    foreach ($row in $rows) {
-
-        $groupId = $row.GroupId.Trim()
-        $assignmentType = $row.AssignmentType.Trim().ToLower()
-
-        if ($assignmentType -notin @("include", "exclude")) {
-            Write-Error "AssignmentType must be either 'include' or 'exclude'. Found: $assignmentType"
+        if ($AssignmentType -notin @("include", "exclude")) {
+            throw "AssignmentType must be 'include' or 'exclude'. Found: '$AssignmentType' in row for GroupId '$GroupId'."
         }
 
-        $isAllDevices = $groupId -eq "adadadad-808e-44e2-905a-0b7873a8a531"
-        $isAllUsers = $groupId -eq "acacacac-9df4-4c7d-9d50-4ef0226f57a9"
-        $isExclusion = $assignmentType -eq "exclude"
+        $IsAllDevices = $GroupId -eq "adadadad-808e-44e2-905a-0b7873a8a531"
+        $IsAllUsers   = $GroupId -eq "acacacac-9df4-4c7d-9d50-4ef0226f57a9"
+        $IsExclusion  = $AssignmentType -eq "exclude"
 
-        if ($isExclusion -and ($isAllDevices -or $isAllUsers)) {
-            Write-Error "Exclusions cannot be applied to All Devices or All Users."
+        if ($IsExclusion -and ($IsAllDevices -or $IsAllUsers)) {
+            throw "Exclusions cannot be applied to All Devices or All Users. GroupId: '$GroupId'."
         }
 
-        # Determine OData Type
-        $odataType = if ($isAllDevices) {
+        $ODataType = if ($IsAllDevices) {
             "#microsoft.graph.allDevicesAssignmentTarget"
-        }
-        elseif ($isAllUsers) {
+        } elseif ($IsAllUsers) {
             "#microsoft.graph.allUsersAssignmentTarget"
-        }
-        elseif ($isExclusion) {
+        } elseif ($IsExclusion) {
             "#microsoft.graph.exclusionGroupAssignmentTarget"
-        }
-        else {
+        } else {
             "#microsoft.graph.groupAssignmentTarget"
         }
 
-        # Handle Filters
-        $filterId = $null
-        $filterType = "none"
+        # Filters only apply to include assignments
+        $FilterId   = $null
+        $FilterType = "none"
 
-        if (-not $isExclusion) {
-            if ($row.FilterId) { $filterId = $row.FilterId.Trim() }
-            if ($row.FilterType) { $filterType = $row.FilterType.Trim() }
+        if (-not $IsExclusion) {
+            if ($Row.PSObject.Properties["FilterId"]   -and $Row.FilterId)   { $FilterId   = $Row.FilterId.Trim() }
+            if ($Row.PSObject.Properties["FilterType"] -and $Row.FilterType) { $FilterType = $Row.FilterType.Trim() }
         }
 
-        # Build Assignment Object
-        $assignments += [PSCustomObject]@{
+        $Assignments += [PSCustomObject]@{
             source   = "direct"
-            id       = "${PolicyId}_$groupId"
+            id       = "${PolicyId}_${GroupId}"
             sourceId = $PolicyId
             target   = [PSCustomObject]@{
-                "@odata.type"                              = $odataType
-                groupId                                    = if ($isAllDevices -or $isAllUsers) { $null } else { $groupId }
-                deviceAndAppManagementAssignmentFilterId   = $filterId
-                deviceAndAppManagementAssignmentFilterType = $filterType
+                "@odata.type"                              = $ODataType
+                groupId                                    = if ($IsAllDevices -or $IsAllUsers) { $null } else { $GroupId }
+                deviceAndAppManagementAssignmentFilterId   = $FilterId
+                deviceAndAppManagementAssignmentFilterType = $FilterType
             }
         }
     }
 
-    # Build Final JSON
-    $jsonOutput = [PSCustomObject]@{
+    $OutputObject = [PSCustomObject]@{
         "@odata.context" = "https://graph.microsoft.com/beta/deviceManagement/configurationPolicies('$PolicyId')/assignments"
-        value            = $assignments
-    } | ConvertTo-Json -Depth 10
-
-    # Ensure output directory exists
-    $directory = Split-Path $OutputFilePath -Parent
-    if (-not (Test-Path $directory)) {
-        New-Item -ItemType Directory -Path $directory -Force | Out-Null
+        value            = $Assignments
     }
 
-    $jsonOutput | Set-Content -Path $OutputFilePath -Encoding UTF8 -Force
+    $JsonOutput = $OutputObject | ConvertTo-Json -Depth 10
 
-    Write-Host "Assignment JSON created at $OutputFilePath"
+    # Ensure output directory exists
+    $Directory = Split-Path $OutputFilePath -Parent
+    if ($Directory -and -not (Test-Path $Directory)) {
+        New-Item -ItemType Directory -Path $Directory -Force | Out-Null
+    }
 
-    return $jsonOutput
+    $JsonOutput | Set-Content -Path $OutputFilePath -Encoding UTF8 -Force
+
+    Write-Host "New assignment JSON written to '$OutputFilePath'."
+
+    return [PSCustomObject]@{
+        FilePath = $OutputFilePath
+        JsonData = $JsonOutput
+    }
 }
