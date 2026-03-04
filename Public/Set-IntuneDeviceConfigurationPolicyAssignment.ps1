@@ -47,7 +47,14 @@ function Set-IntuneDeviceConfigurationPolicyAssignment {
 
     $PolicyId = $PolicyIds[0]
 
-    $Body = @{ assignments = $JsonContent.value } | ConvertTo-Json -Depth 10
+    # The /assign endpoint only accepts { assignments: [ { target: {...} } ] }
+    # Strip source, id, sourceId — they are rejected with 400 Bad Request.
+    # Wrap in @() to guarantee a JSON array even when there is only one item.
+    $AssignmentTargets = @($JsonContent.value | ForEach-Object {
+        [PSCustomObject]@{ target = $_.target }
+    })
+
+    $Body = @{ assignments = $AssignmentTargets } | ConvertTo-Json -Depth 10
 
     try {
         Invoke-MgGraphRequest -Method POST -Uri "https://graph.microsoft.com/beta/deviceManagement/configurationPolicies/$PolicyId/assign" -Body $Body -ContentType "application/json" -ErrorAction Stop

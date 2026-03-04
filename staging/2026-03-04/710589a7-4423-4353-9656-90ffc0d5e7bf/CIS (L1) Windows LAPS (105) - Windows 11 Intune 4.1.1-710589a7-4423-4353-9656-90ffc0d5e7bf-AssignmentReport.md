@@ -1,7 +1,6 @@
 # Assignment Report: CIS (L1) Windows LAPS (105) - Windows 11 Intune 4.1.1
 
-> **Policy ID:** \$PolicyId\`n> **Generated:** 2026-03-04 17:15 UTC
-
+ **Policy ID:** \$PolicyId\`n> **Generated:** 2026-03-04 17:15 UTC
 ---
 
 ## Existing Assignments (0)
