@@ -1,0 +1,67 @@
+{
+  "scheduledActionsForRule@odata.context": "https://graph.microsoft.com/beta/$metadata#deviceManagement/deviceCompliancePolicies('621d1abf-c220-483a-a930-8d2205d0a104')/microsoft.graph.windows10CompliancePolicy/scheduledActionsForRule(scheduledActionConfigurations())",
+  "roleScopeTagIds": [
+    "0"
+  ],
+  "id": "621d1abf-c220-483a-a930-8d2205d0a104",
+  "lastModifiedDateTime": "2023-04-28T19:03:26.9286545Z",
+  "firmwareProtectionEnabled": false,
+  "codeIntegrityEnabled": true,
+  "passwordMinimumCharacterSetCount": null,
+  "storageRequireEncryption": false,
+  "passwordBlockSimple": false,
+  "mobileOsMinimumVersion": null,
+  "deviceThreatProtectionRequiredSecurityLevel": "unavailable",
+  "mobileOsMaximumVersion": null,
+  "kernelDmaProtectionEnabled": false,
+  "antivirusRequired": false,
+  "passwordRequired": false,
+  "deviceThreatProtectionEnabled": false,
+  "defenderEnabled": false,
+  "displayName": "ALL_WIN_D_Compliance_DeviceHealth_DEV",
+  "validOperatingSystemBuildRanges": [],
+  "signatureOutOfDate": false,
+  "secureBootEnabled": true,
+  "virtualizationBasedSecurityEnabled": false,
+  "earlyLaunchAntiMalwareDriverEnabled": false,
+  "configurationManagerComplianceRequired": false,
+  "scheduledActionsForRule": [
+    {
+      "id": "621d1abf-c220-483a-a930-8d2205d0a104",
+      "scheduledActionConfigurations": [
+        {
+          "id": "090cfd45-ccda-4326-8b92-d35b08bbfd28",
+          "gracePeriodHours": 0,
+          "notificationTemplateId": "00000000-0000-0000-0000-000000000000",
+          "notificationMessageCCList": [],
+          "actionType": "block"
+        }
+      ],
+      "ruleName": null,
+      "scheduledActionConfigurations@odata.context": "https://graph.microsoft.com/beta/$metadata#deviceManagement/deviceCompliancePolicies('621d1abf-c220-483a-a930-8d2205d0a104')/microsoft.graph.windows10CompliancePolicy/scheduledActionsForRule('621d1abf-c220-483a-a930-8d2205d0a104')/scheduledActionConfigurations"
+    }
+  ],
+  "passwordRequiredToUnlockFromIdle": false,
+  "memoryIntegrityEnabled": false,
+  "osMaximumVersion": null,
+  "createdDateTime": "2023-04-28T19:03:26.9286545Z",
+  "passwordMinutesOfInactivityBeforeLock": null,
+  "passwordExpirationDays": null,
+  "@odata.type": "#microsoft.graph.windows10CompliancePolicy",
+  "activeFirewallRequired": false,
+  "bitLockerEnabled": true,
+  "version": 1,
+  "antiSpywareRequired": false,
+  "osMinimumVersion": null,
+  "passwordMinimumLength": null,
+  "tpmRequired": false,
+  "rtpEnabled": false,
+  "@odata.context": "https://graph.microsoft.com/beta/$metadata#deviceManagement/deviceCompliancePolicies(scheduledActionsForRule(scheduledActionConfigurations()))/$entity",
+  "passwordPreviousPasswordBlockCount": null,
+  "description": null,
+  "requireHealthyDeviceReport": false,
+  "wslDistributions": [],
+  "passwordRequiredType": "deviceDefault",
+  "defenderVersion": null,
+  "deviceCompliancePolicyScript": null
+}
