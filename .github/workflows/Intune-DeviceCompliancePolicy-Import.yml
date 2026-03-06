@@ -1,4 +1,4 @@
-name: Intune-DeviceCompliance-ImportPolicy
+name: Intune-DeviceCompliancePolicy-Import
 
 on:
   pull_request:
