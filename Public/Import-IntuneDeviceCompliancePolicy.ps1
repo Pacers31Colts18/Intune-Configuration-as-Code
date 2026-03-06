@@ -56,7 +56,7 @@ function Import-IntuneDeviceCompliancePolicy {
         "version",
         "supportsScopeTags",
         "supportedScopeTags",
-        "scheduledActionConfigurations@odata.context"
+        "scheduledActionConfigurations"
     )
 
     $Results = @()
