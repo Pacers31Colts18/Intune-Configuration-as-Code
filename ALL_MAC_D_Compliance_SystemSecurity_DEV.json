@@ -1,0 +1,51 @@
+{
+  "scheduledActionsForRule@odata.context": "https://graph.microsoft.com/beta/$metadata#deviceManagement/deviceCompliancePolicies('e0acd62e-5796-4a01-b145-0b297bb32d52')/microsoft.graph.macOSCompliancePolicy/scheduledActionsForRule(scheduledActionConfigurations())",
+  "firewallEnableStealthMode": false,
+  "passwordPreviousPasswordBlockCount": null,
+  "passwordRequired": false,
+  "createdDateTime": "2025-09-17T20:39:24.4254422Z",
+  "osMinimumVersion": null,
+  "passwordMinimumLength": null,
+  "osMaximumBuildVersion": null,
+  "firewallBlockAllIncoming": false,
+  "scheduledActionsForRule": [
+    {
+      "id": "e0acd62e-5796-4a01-b145-0b297bb32d52",
+      "scheduledActionConfigurations": [
+        {
+          "id": "10914201-b449-4e58-b1c0-05141ff622bf",
+          "gracePeriodHours": 0,
+          "notificationTemplateId": "00000000-0000-0000-0000-000000000000",
+          "notificationMessageCCList": [],
+          "actionType": "block"
+        }
+      ],
+      "ruleName": null,
+      "scheduledActionConfigurations@odata.context": "https://graph.microsoft.com/beta/$metadata#deviceManagement/deviceCompliancePolicies('e0acd62e-5796-4a01-b145-0b297bb32d52')/microsoft.graph.macOSCompliancePolicy/scheduledActionsForRule('e0acd62e-5796-4a01-b145-0b297bb32d52')/scheduledActionConfigurations"
+    }
+  ],
+  "@odata.type": "#microsoft.graph.macOSCompliancePolicy",
+  "gatekeeperAllowedAppSource": "macAppStoreAndIdentifiedDevelopers",
+  "passwordRequiredType": "deviceDefault",
+  "passwordExpirationDays": null,
+  "osMinimumBuildVersion": null,
+  "deviceThreatProtectionRequiredSecurityLevel": "unavailable",
+  "passwordMinutesOfInactivityBeforeLock": null,
+  "osMaximumVersion": null,
+  "lastModifiedDateTime": "2025-09-24T20:07:02.0247871Z",
+  "version": 2,
+  "systemIntegrityProtectionEnabled": false,
+  "advancedThreatProtectionRequiredSecurityLevel": "unavailable",
+  "deviceThreatProtectionEnabled": false,
+  "passwordBlockSimple": false,
+  "storageRequireEncryption": true,
+  "description": "Requires FileVault disk encryption, firewall enabled, and notarized and signed apps.",
+  "firewallEnabled": true,
+  "displayName": "ALL_MAC_D_Compliance_SystemSecurity_DEV",
+  "passwordMinimumCharacterSetCount": null,
+  "id": "e0acd62e-5796-4a01-b145-0b297bb32d52",
+  "@odata.context": "https://graph.microsoft.com/beta/$metadata#deviceManagement/deviceCompliancePolicies(scheduledActionsForRule(scheduledActionConfigurations()))/$entity",
+  "roleScopeTagIds": [
+    "0"
+  ]
+}

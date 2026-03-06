@@ -1,0 +1,51 @@
+{
+  "scheduledActionsForRule@odata.context": "https://graph.microsoft.com/beta/$metadata#deviceManagement/deviceCompliancePolicies('d0ec8ba4-3d79-4946-a210-a121881cec4a')/microsoft.graph.macOSCompliancePolicy/scheduledActionsForRule(scheduledActionConfigurations())",
+  "firewallEnableStealthMode": false,
+  "passwordPreviousPasswordBlockCount": null,
+  "passwordRequired": false,
+  "createdDateTime": "2025-06-16T16:08:35.9096695Z",
+  "osMinimumVersion": null,
+  "passwordMinimumLength": null,
+  "osMaximumBuildVersion": null,
+  "firewallBlockAllIncoming": false,
+  "scheduledActionsForRule": [
+    {
+      "id": "d0ec8ba4-3d79-4946-a210-a121881cec4a",
+      "scheduledActionConfigurations": [
+        {
+          "id": "e5ecf732-a4df-4ce8-a26c-2ab768a43c24",
+          "gracePeriodHours": 0,
+          "notificationTemplateId": "00000000-0000-0000-0000-000000000000",
+          "notificationMessageCCList": [],
+          "actionType": "block"
+        }
+      ],
+      "ruleName": null,
+      "scheduledActionConfigurations@odata.context": "https://graph.microsoft.com/beta/$metadata#deviceManagement/deviceCompliancePolicies('d0ec8ba4-3d79-4946-a210-a121881cec4a')/microsoft.graph.macOSCompliancePolicy/scheduledActionsForRule('d0ec8ba4-3d79-4946-a210-a121881cec4a')/scheduledActionConfigurations"
+    }
+  ],
+  "@odata.type": "#microsoft.graph.macOSCompliancePolicy",
+  "gatekeeperAllowedAppSource": "macAppStoreAndIdentifiedDevelopers",
+  "passwordRequiredType": "deviceDefault",
+  "passwordExpirationDays": null,
+  "osMinimumBuildVersion": null,
+  "deviceThreatProtectionRequiredSecurityLevel": "unavailable",
+  "passwordMinutesOfInactivityBeforeLock": null,
+  "osMaximumVersion": null,
+  "lastModifiedDateTime": "2025-08-21T23:46:57.4105507Z",
+  "version": 3,
+  "systemIntegrityProtectionEnabled": true,
+  "advancedThreatProtectionRequiredSecurityLevel": "unavailable",
+  "deviceThreatProtectionEnabled": false,
+  "passwordBlockSimple": false,
+  "storageRequireEncryption": true,
+  "description": null,
+  "firewallEnabled": true,
+  "displayName": "IntuneCICD_MAC_TESTCompliance_TEST",
+  "passwordMinimumCharacterSetCount": null,
+  "id": "d0ec8ba4-3d79-4946-a210-a121881cec4a",
+  "@odata.context": "https://graph.microsoft.com/beta/$metadata#deviceManagement/deviceCompliancePolicies(scheduledActionsForRule(scheduledActionConfigurations()))/$entity",
+  "roleScopeTagIds": [
+    "0"
+  ]
+}
