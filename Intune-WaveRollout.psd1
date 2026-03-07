@@ -73,10 +73,12 @@ FunctionsToExport = @(
     'Export-IntuneDeviceConfigurationPolicyAssignments',
     'Import-IntuneDeviceCompliancePolicy',
     'Import-IntuneDeviceConfigurationPolicy',
+    'Import-IntuneConfigurationPolicy',
     'Merge-IntuneAssignmentJson',
     'New-IntuneAssignmentJson',
     'New-IntuneAssignmentReport',
     'Set-IntuneDeviceConfigurationPolicyAssignment',
+    'Test-IntuneConfigurationPolicy',
     'Test-IntuneDeviceConfigurationPolicy',
     'Test-IntuneDeviceCompliancePolicy'
 )

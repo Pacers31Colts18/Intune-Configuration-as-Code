@@ -1,11 +1,11 @@
-function Import-IntuneDeviceConfigurationPolicy {
+function Import-IntuneConfigurationPolicy {
     <#
     .SYNOPSIS
-        Imports Intune DeviceConfiguration Policies from JSON files, creating new policies only.
+        Imports Intune Configuration Policies from JSON files, creating new policies only.
     .DESCRIPTION
         Reads JSON files from a specified folder and creates new Intune Device Configuration
         Policies via Microsoft Graph. If a policy with the same name already exists, the file
-        is skipped and a warning is emitted — use Test-IntuneDeviceConfigurationPolicy first
+        is skipped and a warning is emitted — use Test-IntuneConfigurationPolicy first
         to catch conflicts before import.
 
         Supports -WhatIf for dry-run validation without hitting the Graph API.
@@ -16,9 +16,9 @@ function Import-IntuneDeviceConfigurationPolicy {
         - Microsoft.Graph PowerShell SDK (Invoke-MgGraphRequest, Get-MgContext)
         - DeviceManagementConfiguration.ReadWrite.All
     .EXAMPLE
-        Import-IntuneDeviceConfigurationPolicy -FolderPath "C:\temp\IntunePolicies"
+        Import-IntuneConfigurationPolicy -FolderPath "C:\temp\IntunePolicies"
     .EXAMPLE
-        Import-IntuneDeviceConfigurationPolicy -FolderPath "C:\temp\IntunePolicies" -WhatIf
+        Import-IntuneConfigurationPolicy -FolderPath "C:\temp\IntunePolicies" -WhatIf
     .LINK
         https://learn.microsoft.com/en-us/powershell/microsoftgraph/overview
     #>
@@ -79,16 +79,16 @@ function Import-IntuneDeviceConfigurationPolicy {
             $JsonObject.PSObject.Properties.Remove($Prop)
         }
 
-        $DisplayName = $JsonObject.displayName
+        $DisplayName = $JsonObject.name
 
         if (-not $DisplayName) {
-            Write-Warning "Policy file '$($File.Name)' does not contain a 'displayName' property. Skipping."
+            Write-Warning "Policy file '$($File.Name)' does not contain a 'name' property. Skipping."
             continue
         }
 
         # Check whether the policy already exists (skip rather than overwrite)
         try {
-            $FilterUri = "https://graph.microsoft.com/beta/deviceManagement/deviceConfigurations?`$filter=displayName eq '$DisplayName'"
+            $FilterUri = "https://graph.microsoft.com/beta/deviceManagement/configurationPolicies?`$filter=name eq '$DisplayName'"
             $Existing  = Invoke-MgGraphRequest -Method GET -Uri $FilterUri -ErrorAction Stop
         }
         catch {
@@ -106,7 +106,7 @@ function Import-IntuneDeviceConfigurationPolicy {
         if ($PSCmdlet.ShouldProcess($DisplayName, "Create Intune Device Configuration Policy")) {
 
             try {
-                $Created = Invoke-MgGraphRequest -Method POST -Uri "https://graph.microsoft.com/beta/deviceManagement/deviceConfigurations" -Body $Body -ContentType "application/json" -ErrorAction Stop
+                $Created = Invoke-MgGraphRequest -Method POST -Uri "https://graph.microsoft.com/beta/deviceManagement/configurationPolicies" -Body $Body -ContentType "application/json" -ErrorAction Stop
             }
             catch {
                 Write-Warning "Failed to create policy '$DisplayName'. Skipping. Error: $_"
