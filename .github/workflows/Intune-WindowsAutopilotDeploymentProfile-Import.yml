@@ -4,12 +4,12 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
     paths:
-      - 'staging/windowsautopilotdeploymentprofile/policies/**'
+      - 'staging/windowsautopilotdeploymentprofile/profiles/**'
   push:
     branches:
       - main
     paths:
-      - 'staging/windowsautopilotdeploymentprofile/policies/**'
+      - 'staging/windowsautopilotdeploymentprofile/profiles/**'
 
 permissions:
   id-token: write
@@ -19,7 +19,7 @@ permissions:
 
 env:
   MODULE_PATH:    ${{ github.workspace }}/Intune-WaveRollout
-  STAGING_FOLDER: ${{ github.workspace }}/staging/windowsautopilotdeploymentprofile/policies
+  STAGING_FOLDER: ${{ github.workspace }}/staging/windowsautopilotdeploymentprofile/profiles
 
 jobs:
 
