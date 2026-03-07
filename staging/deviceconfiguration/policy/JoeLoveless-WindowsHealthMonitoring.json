@@ -1,0 +1,19 @@
+{
+  "lastModifiedDateTime": "2026-03-07T19:17:49.0742757Z",
+  "roleScopeTagIds": [
+    "0"
+  ],
+  "configDeviceHealthMonitoringCustomScope": null,
+  "version": 1,
+  "description": null,
+  "deviceManagementApplicabilityRuleOsEdition": null,
+  "displayName": "JoeLoveless-WindowsHealthMonitoring2",
+  "deviceManagementApplicabilityRuleDeviceMode": null,
+  "supportsScopeTags": true,
+  "createdDateTime": "2026-03-07T19:17:49.0742757Z",
+  "allowDeviceHealthMonitoring": "enabled",
+  "@odata.type": "#microsoft.graph.windowsHealthMonitoringConfiguration",
+  "configDeviceHealthMonitoringScope": "bootPerformance",
+  "id": "f0db13d6-1712-401c-943e-df98eba5e42b",
+  "deviceManagementApplicabilityRuleOsVersion": null
+}
