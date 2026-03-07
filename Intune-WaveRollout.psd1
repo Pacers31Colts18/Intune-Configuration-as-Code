@@ -71,6 +71,7 @@ RequiredModules = ''
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
 FunctionsToExport = @(
     'Export-IntuneDeviceConfigurationPolicyAssignments',
+    'Import-IntuneWindowsAutopilotDeploymentProfile',
     'Import-IntuneDeviceCompliancePolicy',
     'Import-IntuneDeviceConfigurationPolicy',
     'Import-IntuneConfigurationPolicy',
@@ -78,6 +79,7 @@ FunctionsToExport = @(
     'New-IntuneAssignmentJson',
     'New-IntuneAssignmentReport',
     'Set-IntuneDeviceConfigurationPolicyAssignment',
+    'Test-IntuneWindowsAutopilotDeploymentProfile',
     'Test-IntuneConfigurationPolicy',
     'Test-IntuneDeviceConfigurationPolicy',
     'Test-IntuneDeviceCompliancePolicy'

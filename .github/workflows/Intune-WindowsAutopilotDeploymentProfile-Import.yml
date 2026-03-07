@@ -1,0 +1,120 @@
+name: Intune-WindowsAutopilotDeploymentProfile-Import
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'staging/windowsautopilotdeploymentprofile/policies/**'
+  push:
+    branches:
+      - main
+    paths:
+      - 'staging/windowsautopilotdeploymentprofile/policies/**'
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+  statuses: write
+
+env:
+  MODULE_PATH:    ${{ github.workspace }}/Intune-WaveRollout
+  STAGING_FOLDER: ${{ github.workspace }}/staging/windowsautopilotdeploymentprofile/policies
+
+jobs:
+
+  # PR: Check for conflicts before allowing merge
+  check_existing:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    environment: GraphApi
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          allow-no-subscriptions: true
+
+      - name: Install Graph Modules
+        shell: pwsh
+        run: |
+          Install-Module Microsoft.Graph.Authentication      -Force -AllowClobber -Scope CurrentUser
+          Install-Module Microsoft.Graph.Beta.DeviceManagement -Force -AllowClobber -Scope CurrentUser
+
+      - name: Check for Existing Profiles
+        id: policy_check
+        shell: pwsh
+        run: |
+          $token = (az account get-access-token --resource https://graph.microsoft.com | ConvertFrom-Json).accessToken
+          Connect-MgGraph -AccessToken (ConvertTo-SecureString $token -AsPlainText -Force)
+
+          Import-Module -Name "${{ env.MODULE_PATH }}" -Force
+
+          $results = Test-IntuneWindowsAutopilotDeploymentProfile -FolderPath "${{ env.STAGING_FOLDER }}"
+
+          if ($results -and $results.Count -gt 0) {
+
+            # Build a Markdown table for the PR comment
+            $table  = "## Intune Profile Conflict Detected`n`n"
+            $table += "The following profiles already exist in the tenant and would conflict with this PR:`n`n"
+            $table += "| Profile Name | Profile ID | Source File |`n"
+            $table += "|--------------|------------|-------------|`n"
+            foreach ($r in $results) {
+              $table += "| $($r.PolicyName) | $($r.PolicyId) | $($r.SourceFile) |`n"
+            }
+            $table += "`n> Resolve conflicts before merging."
+
+            # Post comment to the PR
+            $table | gh pr comment ${{ github.event.pull_request.number }} --body-file -
+
+            Write-Error "Existing profiles detected. Cannot merge."
+            exit 1
+          }
+
+          Write-Host "No conflicts found. PR check passed."
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Post-merge: Import profiles into Intune
+  import_policy:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment: GraphApi
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          allow-no-subscriptions: true
+
+      - name: Install Graph Modules
+        shell: pwsh
+        run: |
+          Install-Module Microsoft.Graph.Authentication        -Force -AllowClobber -Scope CurrentUser
+          Install-Module Microsoft.Graph.Beta.DeviceManagement -Force -AllowClobber -Scope CurrentUser
+
+      - name: Import Policies
+        shell: pwsh
+        run: |
+          $token = (az account get-access-token --resource https://graph.microsoft.com | ConvertFrom-Json).accessToken
+          Connect-MgGraph -AccessToken (ConvertTo-SecureString $token -AsPlainText -Force)
+
+          Import-Module -Name "${{ env.MODULE_PATH }}" -Force
+
+          $results = Import-IntuneWindowsAutopilotDeploymentProfile -FolderPath "${{ env.STAGING_FOLDER }}"
+
+          if (-not $results -or $results.Count -eq 0) {
+            throw "No profiles were imported. Check logs for skipped files or errors."
+          }
+
+          Write-Host "`nImport summary:"
+          $results | ForEach-Object {
+            Write-Host "$($_.Name) [$($_.Id)] (from $($_.SourceFile))"
+          }
+          Write-Host "`nAll profiles imported successfully."
