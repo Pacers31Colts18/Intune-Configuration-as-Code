@@ -1,0 +1,38 @@
+{
+  "roleScopeTagIds": [
+    "0"
+  ],
+  "outOfBoxExperienceSetting": {
+    "escapeLinkHidden": true,
+    "eulaHidden": true,
+    "userType": "standard",
+    "keyboardSelectionPageSkipped": true,
+    "deviceUsageType": "singleUser",
+    "privacySettingsHidden": true
+  },
+  "language": "os-default",
+  "extractHardwareHash": true,
+  "hardwareHashExtractionEnabled": true,
+  "deviceNameTemplate": "JL-%SERIAL%",
+  "managementServiceAppId": null,
+  "id": "54c48954-766f-4238-86da-ed2d872e793e",
+  "deviceType": "windowsPc",
+  "lastModifiedDateTime": "2026-01-23T16:04:50.2192925Z",
+  "description": "",
+  "displayName": "JoeLoveless_Autopilot_UserDriven2",
+  "preprovisioningAllowed": false,
+  "enrollmentStatusScreenSettings": null,
+  "@odata.context": "https://graph.microsoft.com/beta/$metadata#deviceManagement/windowsAutopilotDeploymentProfiles/$entity",
+  "locale": "os-default",
+  "enableWhiteGlove": false,
+  "createdDateTime": "2026-01-23T16:04:50.2192925Z",
+  "outOfBoxExperienceSettings": {
+    "hideEscapeLink": true,
+    "hidePrivacySettings": true,
+    "skipKeyboardSelectionPage": true,
+    "userType": "standard",
+    "deviceUsageType": "singleUser",
+    "hideEULA": true
+  },
+  "@odata.type": "#microsoft.graph.azureADWindowsAutopilotDeploymentProfile"
+}
