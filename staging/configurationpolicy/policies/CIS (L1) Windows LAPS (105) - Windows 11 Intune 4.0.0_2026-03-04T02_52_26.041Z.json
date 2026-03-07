@@ -4,7 +4,7 @@
   "creationSource": null,
   "description": "",
   "lastModifiedDateTime": "2026-02-07T16:08:46.1279387Z",
-  "name": "CIS (L1) Windows LAPS (105) - Windows 11 Intune 4.3.0",
+  "name": "CIS (L1) Windows LAPS (105) - Windows 11 Intune 4.4.0",
   "platforms": "windows10",
   "priorityMetaData": null,
   "roleScopeTagIds": ["0"],
