@@ -53,7 +53,7 @@ jobs:
 
           Import-Module -Name "${{ env.MODULE_PATH }}" -Force
 
-          $results = Test-IntuneDeviceConfigurationPolicy -FolderPath "${{ env.STAGING_FOLDER }}"
+          $results = Test-IntuneConfigurationPolicy -FolderPath "${{ env.STAGING_FOLDER }}"
 
           if ($results -and $results.Count -gt 0) {
 
@@ -107,7 +107,7 @@ jobs:
 
           Import-Module -Name "${{ env.MODULE_PATH }}" -Force
 
-          $results = Import-IntuneDeviceConfigurationPolicy -FolderPath "${{ env.STAGING_FOLDER }}"
+          $results = Import-IntuneConfigurationPolicy -FolderPath "${{ env.STAGING_FOLDER }}"
 
           if (-not $results -or $results.Count -eq 0) {
             throw "No policies were imported. Check logs for skipped files or errors."
