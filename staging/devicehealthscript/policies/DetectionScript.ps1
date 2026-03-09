@@ -1,4 +1,4 @@
-???<#
+<#
 {D6886603-9D2F-4EB2-B667-1971041FA96B} = WUFB PIN, NGC Credential Provider
 PIN is minimum requirement for Windows Hello for Business Enrollment.
 #> 
